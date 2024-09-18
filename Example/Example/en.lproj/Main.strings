@@ -1,0 +1,27 @@
+
+/* Class = "UILabel"; text = "01、应用语言设置"; ObjectID = "0J9-fY-34g"; */
+"0J9-fY-34g.text" = "01. App Language Settings";
+
+/* Class = "UINavigationItem"; title = "XZLocalization"; ObjectID = "5Fk-h4-oS3"; */
+"5Fk-h4-oS3.title" = "XZLocalization";
+
+/* Class = "UINavigationItem"; title = "应用语言设置"; ObjectID = "8nc-yK-fqV"; */
+"8nc-yK-fqV.title" = "App Language Settings";
+
+/* Class = "UILabel"; text = "简体中文"; ObjectID = "I1B-ve-yot"; */
+"I1B-ve-yot.text" = "简体中文";
+
+/* Class = "UILabel"; text = "02、本地化测试"; ObjectID = "M3e-pi-JXa"; */
+"M3e-pi-JXa.text" = "02. Localization Tests";
+
+/* Class = "UILabel"; text = "应用内语言设置"; ObjectID = "SKt-zq-NqD"; */
+"SKt-zq-NqD.text" = "InApp Language Preferences";
+
+/* Class = "UINavigationItem"; title = "本地化测试"; ObjectID = "VaM-5H-tc2"; */
+"VaM-5H-tc2.title" = "Localization Tests";
+
+/* Class = "UILabel"; text = "English"; ObjectID = "gd5-BN-Iwm"; */
+"gd5-BN-Iwm.text" = "English";
+
+/* Class = "UIBarButtonItem"; title = "返回"; ObjectID = "s4K-VP-PZf"; */
+"s4K-VP-PZf.title" = "Back";
