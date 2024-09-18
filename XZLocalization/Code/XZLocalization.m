@@ -26,16 +26,22 @@ static BOOL _isInAppLanguagePreferencesSupported  = NO;
 
 @implementation XZLocalization
 
++ (XZAppLanguage)effectiveLanguage {
+    if (_isInAppLanguagePreferencesEnabled) {
+        if (_preferredLanguage) {
+            return _preferredLanguage;
+        }
+    }
+    NSBundle * const mainBundle = NSBundle.mainBundle;
+    return mainBundle.preferredLocalizations.firstObject ?: mainBundle.localizations.firstObject ?: @"en";
+}
+
 + (XZAppLanguage)preferredLanguage {
     if (_preferredLanguage != nil) {
         return _preferredLanguage;
     }
-    NSArray<XZAppLanguage> * const preferredLanguages = NSBundle.mainBundle.preferredLocalizations;
-    if ([preferredLanguages isKindOfClass:[NSArray class]] && preferredLanguages.count > 0) {
-        _preferredLanguage = preferredLanguages[0];
-    } else {
-        _preferredLanguage = NSBundle.mainBundle.localizations.firstObject ?: @"en";
-    }
+    NSBundle * const mainBundle = NSBundle.mainBundle;
+    _preferredLanguage = mainBundle.preferredLocalizations.firstObject ?: mainBundle.localizations.firstObject ?: @"en";
     return _preferredLanguage;
 }
 
@@ -55,10 +61,10 @@ static BOOL _isInAppLanguagePreferencesSupported  = NO;
         NSLog(@"%@", XZLocalizedString(@"语言设置失败，不支持 {0} 语言。", newValue));
         return;
     }
+    _preferredLanguage = newValue.copy;
     
     // 如果没有开启应用内语言设置，不保存值。
     if (self.isInAppLanguagePreferencesEnabled) {
-        _preferredLanguage = newValue.copy;
         [NSNotificationCenter.defaultCenter postNotificationName:XZAppLanguagePreferencesDidChangeNotification object:self];
     }
     
