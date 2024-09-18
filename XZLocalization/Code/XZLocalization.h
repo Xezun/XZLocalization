@@ -45,7 +45,7 @@ FOUNDATION_EXPORT NSNotificationName const XZAppLanguagePreferencesDidChangeNoti
 ///
 /// - Note: 更新首选语言，默认需重启应用才会生效。
 ///
-/// 通过 `isInAppLanguagePreferenceEnabled` 属性，可以开启应用内语言设置立即生效。
+/// 结合 `isInAppLanguagePreferenceEnabled` 属性，可以开启在应用内切换应用语言。
 ///
 /// ```objc
 /// UIWindow * const window = _window;
@@ -57,6 +57,7 @@ FOUNDATION_EXPORT NSNotificationName const XZAppLanguagePreferencesDidChangeNoti
 /// _window.rootViewController = rootVC;
 /// [_window makeKeyAndVisible];
 ///
+/// // 转场动画
 /// _window.layer.shadowColor = UIColor.blackColor.CGColor;
 /// _window.layer.shadowOpacity = 0.5;
 /// _window.layer.shadowRadius = 5.0;
@@ -65,7 +66,7 @@ FOUNDATION_EXPORT NSNotificationName const XZAppLanguagePreferencesDidChangeNoti
 /// [UIView animateWithDuration:0.5 animations:^{
 ///     self->_window.frame = bounds;
 /// } completion:^(BOOL finished) {
-///     window.hidden = YES;
+///     window.hidden = YES; // 释放旧的 window
 ///     self->_window.layer.shadowColor = nil;
 /// }];
 /// ```
@@ -78,14 +79,16 @@ FOUNDATION_EXPORT NSNotificationName const XZAppLanguagePreferencesDidChangeNoti
 /// 应用支持的所有语言。
 @property (class, nonatomic, copy, readonly) NSArray<XZAppLanguage> *supportedLanguages;
 
-/// 是否允许应用内语言偏好设置。默认否。
-/// @note 开启功能后，更高偏好语言，会立即生效，新的页面将按照新的语言展示。
+/// 是否开启应用内语言偏好设置。默认否。
+/// @note 开启功能后，更改应用语言立即生效，新的页面将按照新的语言展示。
 @property (class, nonatomic, setter=setInAppLanguagePreferencesEnabled:) BOOL isInAppLanguagePreferencesEnabled;
 
-/// 获取语言包。
-/// - Parameter language: 语言
-+ (nullable NSBundle *)resourceBundleForLanguage:(XZAppLanguage)language;
+@end
 
+@interface NSBundle (XZLocalization)
+/// 获取指定语言的语言包。如果没有找到语言包，则返回自身。
+/// - Parameter language: 语言
+- (NSBundle *)xz_resourceBundleForLanguage:(XZAppLanguage)language NS_SWIFT_NAME(resourceBundle(for:));
 @end
 
 /// 识别字符串中的占位参数的格式。
