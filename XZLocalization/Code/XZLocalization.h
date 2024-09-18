@@ -41,6 +41,10 @@ FOUNDATION_EXPORT NSNotificationName const XZAppLanguagePreferencesDidChangeNoti
 /// @note 虽然查找字符串中的参数的插值，会有产生额外操作，但是当本地化字符串没有参数时，使用的是原生的本地化方法，实际对性能影响已降至最低。
 @interface XZLocalization : NSObject
 
+/// 当前生效的语言。
+/// @note 该属性只能表明在创建新 UI 时生效的语言，不表示当前已有 UI 的显示语言。
+@property (class, readonly) XZAppLanguage effectiveLanguage;
+
 /// 应用首选语言。
 ///
 /// - Note: 更新首选语言，默认需重启应用才会生效。
