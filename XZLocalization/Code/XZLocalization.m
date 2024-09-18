@@ -19,8 +19,10 @@ NSNotificationName      const XZAppLanguagePreferencesDidChangeNotification = @"
 static NSString * const AppleLanguages = @"AppleLanguages";
 /// 记录了当前的语言偏好设置。
 static XZAppLanguage _Nullable _preferredLanguage = nil;
-/// 支持应用内语言偏好设置的类。
-static Class _Nullable _inAppLanguageBundleClass = Nil;
+/// 是否开启应用内切换语言功能。
+static BOOL _isInAppLanguagePreferencesEnabled    = NO;
+/// 是否支持应用内切换语言功能。
+static BOOL _isInAppLanguagePreferencesSupported  = NO;
 
 @implementation XZLocalization
 
@@ -89,63 +91,73 @@ static Class _Nullable _inAppLanguageBundleClass = Nil;
 }
 
 + (BOOL)isInAppLanguagePreferencesEnabled {
-    if (_inAppLanguageBundleClass == Nil) {
-        return NO;
-    }
-    return _inAppLanguageBundleClass == NSBundle.mainBundle.class;
+    return _isInAppLanguagePreferencesEnabled;
 }
 
 + (void)setInAppLanguagePreferencesEnabled:(BOOL)isInAppLanguagePreferencesEnabled {
     NSAssert(NSThread.isMainThread, XZLocalizedString(@"方法 %s 只能在主线程调用。"),  __PRETTY_FUNCTION__);
-    
-    NSBundle * const mainBundle = NSBundle.mainBundle;
-    
-    // 以 mainBundle 的类作为超类，派生支持应用内语言偏好设置的子类。
-    if (_inAppLanguageBundleClass == Nil) {
-        _inAppLanguageBundleClass = xz_objc_createClass(mainBundle.class, ^(Class  _Nonnull __unsafe_unretained newClass) {
-            SEL const method = @selector(localizedStringForKey:value:table:);
-            xz_objc_class_addMethodWithBlock(newClass, method, nil, nil, ^NSString *(NSBundle *self, NSString *key, NSString *value, NSString *tableName) {
-                XZAppLanguage const preferredLanguage = XZLocalization.preferredLanguage;
-                NSBundle * const languageBundle = [XZLocalization resourceBundleForLanguage:preferredLanguage];
-                if (languageBundle != nil) {
-                    return [languageBundle localizedStringForKey:key value:value table:tableName];
-                }
-                struct objc_super super = {
-                    .receiver = self,
-                    .super_class = class_getSuperclass(object_getClass(self))
-                };
-                return ((NSString *(*)(struct objc_super *, SEL, NSString *, NSString *, NSString *))objc_msgSendSuper)(&super, method, key, value, tableName);
-            }, nil);
-        });
-    }
-    
-    // 开启/关闭功能
-    if (isInAppLanguagePreferencesEnabled) {
-        if (![mainBundle.class isKindOfClass:_inAppLanguageBundleClass]) {
-            object_setClass(mainBundle, _inAppLanguageBundleClass);
-        }
-    } else {
-        while ([mainBundle isKindOfClass:_inAppLanguageBundleClass]) {
-            object_setClass(mainBundle, mainBundle.superclass);
-        }
-    }
+    [self setInAppLanguagePreferencesSupported];
+    _isInAppLanguagePreferencesEnabled = isInAppLanguagePreferencesEnabled;
 }
 
-+ (NSBundle *)resourceBundleForLanguage:(XZAppLanguage)language {
-    static NSMutableDictionary<NSString *, id> *_languageBundles = nil;
++ (void)setInAppLanguagePreferencesSupported {
+    if (_isInAppLanguagePreferencesSupported) {
+        return;
+    }
+    _isInAppLanguagePreferencesSupported = YES;
     
-    NSBundle *resourceBundle = _languageBundles[language];
+    SEL const method = @selector(localizedStringForKey:value:table:);
+    xz_objc_class_addMethodWithBlock(NSBundle.class, method, nil, nil, nil, ^id _Nonnull(SEL  _Nonnull selector) {
+        return ^NSString *(NSBundle *self, NSString *key, NSString *value, NSString *tableName) {
+            if (_isInAppLanguagePreferencesEnabled) {
+                // 开启状态下，NSBundle 查找本地化字符串，先查找语言包
+                XZAppLanguage const preferredLanguage = XZLocalization.preferredLanguage;
+                NSBundle *    const languageBundle    = [self xz_resourceBundleForLanguage:preferredLanguage];
+                // 这里已经是语言包，直接向原始实现发送消息
+                return ((NSString *(*)(NSBundle *, SEL, NSString *, NSString *, NSString *))objc_msgSend)(languageBundle, selector, key, value, tableName);
+            }
+            return ((NSString *(*)(NSBundle *, SEL, NSString *, NSString *, NSString *))objc_msgSend)(self, selector, key, value, tableName);
+        };
+    });
+}
+
+@end
+
+@implementation NSBundle (XZLocalization)
+
+- (NSBundle *)xz_resourceBundleForLanguage:(XZAppLanguage)language {
+    static const void * const _languageBundles = &_languageBundles;
+    NSMutableDictionary<NSString *, id> *languageBundles = objc_getAssociatedObject(self, _languageBundles);
+    
+    // 查找缓存
+    NSBundle *resourceBundle = languageBundles[language];
     if (resourceBundle != nil) {
-        return ((id)resourceBundle == NSNull.null) ? nil : resourceBundle;
+        return ((id)resourceBundle == NSNull.null) ? self : resourceBundle;
     }
     
-    NSString *path = [NSBundle.mainBundle pathForResource:language ofType:@"lproj"];
-    resourceBundle = [NSBundle bundleWithPath:path];
-    
-    if (_languageBundles == nil) {
-        _languageBundles = [NSMutableDictionary dictionary];
+    // 建立缓存
+    if (languageBundles == nil) {
+        languageBundles = [NSMutableDictionary dictionary];
+        objc_setAssociatedObject(self, _languageBundles, languageBundles, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-    _languageBundles[language] = resourceBundle ?: [NSNull null];
+    
+    // 查找语言包，找不到返回自身，使用 NSNull 标记已经找过了。
+    if ([self.bundleURL.lastPathComponent hasSuffix:@".lproj"]) {
+        // 自身就是语言包
+        languageBundles[language] = NSNull.null;
+        resourceBundle = self;
+    } else {
+        NSString *path = [self pathForResource:language ofType:@"lproj"];
+        if (path != nil) {
+            resourceBundle = [NSBundle bundleWithPath:path];
+        }
+        if (resourceBundle != nil) {
+            languageBundles[language] = resourceBundle;
+        } else {
+            languageBundles[language] = NSNull.null;
+            resourceBundle = self;
+        }
+    }
     
     return resourceBundle;
 }
